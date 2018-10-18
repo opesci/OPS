@@ -7,6 +7,8 @@ int nx, ny, nt;
 #define OPS_2D
 #include "ops_seq.h"
 
+#define OUTPUT_FILE "output.txt"
+
 #define Item ops_dat
 #define swap(a, b)     \
     {                  \
@@ -28,7 +30,7 @@ int main(int argc, char *argv[])
 
     if (argc != 2)
     {
-        printf("Argumento:\t1) - nt\n");
+        printf("Expected argument:\t1) - Number of time steps (nt)\n");
         return -1;
     }
 
@@ -57,8 +59,8 @@ int main(int argc, char *argv[])
     ops_dat dat_un = ops_decl_dat(grid, 1, size, base, d_m, d_p, un, "double", "un");
 
     // Print dat to text file for debugging
-    ops_print_dat_to_txtfile(dat_u0, "output.txt");
-    ops_print_dat_to_txtfile(dat_un, "output.txt");
+    ops_print_dat_to_txtfile(dat_u0, OUTPUT_FILE);
+    ops_print_dat_to_txtfile(dat_un, OUTPUT_FILE);
 
     // Declare stencil
     int s2d_00[] = {0, 0};
@@ -67,34 +69,34 @@ int main(int argc, char *argv[])
     // Set loop iteration range to be all the grid.
     int iter_range[] = {0, nx, 0, ny};
 
+    printf("Starts time propagation.\n");
+
     for (int i = 0; i < nt; i++)
     {
         ops_par_loop(march_kernel, "march_kernel", grid, 2, iter_range,
                      ops_arg_dat(dat_un, 1, S2D_00, "double", OPS_WRITE),
                      ops_arg_dat(dat_u0, 1, S2D_00, "double", OPS_READ));
 
-        swap(dat_un, dat_u0);
+        swap(dat_u0, dat_un);
     }
 
-    printf("\n------------------------\n");
-    printf("u0 - %lf\n", u0[0]);
-    printf("un - %lf\n", un[0]);
+    printf("Propagation finished.\n");
 
+    // This seems not be working.
     if ((nt % 2) == 1)
     {
-        swap(dat_un, dat_u0);
+        swap(dat_u0, dat_un);
     }
-
-    // Print dat to text file for debugging
-    ops_print_dat_to_txtfile(dat_u0, "output.txt");
-    ops_print_dat_to_txtfile(dat_un, "output.txt");
 
     // Print dat to text file for debugging
     ops_dat_fetch_data(dat_u0, 0, (char *)u0);
     ops_dat_fetch_data(dat_un, 0, (char *)un);
 
-    printf("u0 - %lf\n", u0[0]);
-    printf("un - %lf\n", un[0]);
+    // Print dat to text file for debugging
+    ops_print_dat_to_txtfile(dat_u0, OUTPUT_FILE);
+    ops_print_dat_to_txtfile(dat_un, OUTPUT_FILE);
+
+    printf("Output generated in file: %s", OUTPUT_FILE);
 
     ops_exit();
 
