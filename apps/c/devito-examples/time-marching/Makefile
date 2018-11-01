@@ -10,6 +10,6 @@ OPS_FILES=time_marching.cpp
 OPS_GENERATED=time_marching_ops.cpp
 
 APP=time_marching
-MAIN_SRC=time_marching.cpp
+MAIN_SRC=time_marching
 
 include $(OPS_INSTALL_PATH)/../makefiles/Makefile.c_app

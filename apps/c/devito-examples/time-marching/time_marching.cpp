@@ -9,14 +9,6 @@ int nx, ny, nt;
 
 #define OUTPUT_FILE "output.txt"
 
-#define Item ops_dat
-#define swap(a, b)     \
-    {                  \
-        Item temp = a; \
-        a = b;         \
-        b = temp;      \
-    }
-
 //Including applicaiton-specific "user kernels"
 #include "time_marching_kernel.h"
 
@@ -26,7 +18,7 @@ int main(int argc, char *argv[])
     int base[] = {0, 0};
     int d_m[] = {0, 0};
     int d_p[] = {0, 0};
-    double *u0, *un;
+    double **u;
 
     if (argc != 2)
     {
@@ -48,19 +40,21 @@ int main(int argc, char *argv[])
     ops_decl_const("ny", 1, "int", &ny);
 
     // Alocates and initialize grid
-    u0 = (double *)calloc(nx * ny, sizeof(double));
-    un = (double *)calloc(nx * ny, sizeof(double));
+    u = (double **)malloc(2 * sizeof(double *));
+    u[0] = (double *)calloc(nx * ny, sizeof(double));
+    u[1] = (double *)calloc(nx * ny, sizeof(double));
 
     // Declare an ops_block
     ops_block grid = ops_decl_block(2, "grid");
 
     // Declare an ops_dat object
-    ops_dat dat_u0 = ops_decl_dat(grid, 1, size, base, d_m, d_p, u0, "double", "u0");
-    ops_dat dat_un = ops_decl_dat(grid, 1, size, base, d_m, d_p, un, "double", "un");
+    ops_dat dat_u[2];
+    dat_u[0] = ops_decl_dat(grid, 1, size, base, d_m, d_p, u[0], "double", "u0");
+    dat_u[1] = ops_decl_dat(grid, 1, size, base, d_m, d_p, u[1], "double", "u1");
 
     // Print dat to text file for debugging
-    ops_print_dat_to_txtfile(dat_u0, OUTPUT_FILE);
-    ops_print_dat_to_txtfile(dat_un, OUTPUT_FILE);
+    ops_print_dat_to_txtfile(dat_u[0], OUTPUT_FILE);
+    ops_print_dat_to_txtfile(dat_u[1], OUTPUT_FILE);
 
     // Declare stencil
     int s2d_00[] = {0, 0};
@@ -74,27 +68,19 @@ int main(int argc, char *argv[])
     for (int i = 0; i < nt; i++)
     {
         ops_par_loop(march_kernel, "march_kernel", grid, 2, iter_range,
-                     ops_arg_dat(dat_un, 1, S2D_00, "double", OPS_WRITE),
-                     ops_arg_dat(dat_u0, 1, S2D_00, "double", OPS_READ));
-
-        swap(dat_u0, dat_un);
+                     ops_arg_dat(dat_u[i % 2], 1, S2D_00, "double", OPS_WRITE),
+                     ops_arg_dat(dat_u[(i + 1) % 2], 1, S2D_00, "double", OPS_READ));
     }
 
     printf("Propagation finished.\n");
 
-    // This seems not be working.
-    if ((nt % 2) == 1)
-    {
-        swap(dat_u0, dat_un);
-    }
+    // Print dat to text file for debugging
+    ops_dat_fetch_data(dat_u[0], 0, (char *)u[0]);
+    ops_dat_fetch_data(dat_u[1], 0, (char *)u[1]);
 
     // Print dat to text file for debugging
-    ops_dat_fetch_data(dat_u0, 0, (char *)u0);
-    ops_dat_fetch_data(dat_un, 0, (char *)un);
-
-    // Print dat to text file for debugging
-    ops_print_dat_to_txtfile(dat_u0, OUTPUT_FILE);
-    ops_print_dat_to_txtfile(dat_un, OUTPUT_FILE);
+    ops_print_dat_to_txtfile(dat_u[0], OUTPUT_FILE);
+    ops_print_dat_to_txtfile(dat_u[1], OUTPUT_FILE);
 
     printf("Output generated in file: %s", OUTPUT_FILE);
 
